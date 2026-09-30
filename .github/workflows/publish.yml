@@ -1,0 +1,296 @@
+name: Publish to GHCR
+
+# Runs ONLY on main, ONLY after a PR merges (or a direct push, if ever
+# allowed). This is the single place lvx-* images get built and pushed to
+# ghcr.io/johalduran7/ai-mcp-docker/lvx-*:latest — nobody pushes packages by hand anymore.
+#
+# Release metadata is committed to the versions branch, rather than main.
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: publish-main
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  packages: write
+  issues: write
+
+env:
+  GHCR_OWNER: johalduran7
+  GHCR_REPO: ai-mcp-docker
+  PUSH_CONCURRENCY: "4"
+  PUSH_MAX_ATTEMPTS: "3"
+  PUSH_RETRY_DELAY_SECONDS: "5"
+
+jobs:
+  publish:
+    name: publish
+    runs-on: ubuntu-latest
+    # MCP_NOTIFY_TOKEN (environment secret) is only visible to a job that
+    # declares this environment. Once you restrict this environment's
+    # deployment branches to main, that lines up with this workflow's own
+    # trigger (push to main), so no behavior change there.
+    environment: ai-mcp-docker
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Ensure versions file exists
+        run: |
+          git fetch origin versions --depth=1 || true
+          mkdir -p versions
+          if git show origin/versions:versions/mcp-version.json > versions/mcp-version.json 2>/dev/null; then
+            exit 0
+          fi
+          echo '{}' > versions/mcp-version.json
+
+      - name: Discover services from compose
+        id: services
+        run: |
+          services="$(docker compose config --services | sort | tr '\n' ' ')"
+          echo "list=${services}" >> "$GITHUB_OUTPUT"
+
+      - name: Detect changed services (source-hash diff)
+        id: diff
+        # Hashes each service's own servers/<name>/** (including its own
+        # requirements.txt), the shared resources/version_notifier.py,
+        # Dockerfile/.dockerignore, and that service's resolved compose
+        # block. Unchanged source => skip.
+        run: |
+          python3 .github/scripts/detect_changed_services.py \
+            --versions-file versions/mcp-version.json \
+            --services ${{ steps.services.outputs.list }} \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Detect config template changes
+        id: templates
+        # Independent of the source-hash diff above — a template can change
+        # (docs-only) without its server's image changing, and vice versa.
+        # Attributes each changed template file to a server by looking for
+        # that server's own lvx-<name> reference in the diff. Always runs
+        # (even if no images changed) so a template-only edit still notifies.
+        run: |
+          python3 .github/scripts/detect_template_changes.py \
+            --before "${{ github.event.before }}" \
+            --after "${{ github.sha }}" \
+            --services ${{ steps.services.outputs.list }} \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Stamp build version
+        if: steps.diff.outputs.changed_count != '0'
+        id: stamp
+        run: echo "version=v$(date -u +%Y%m%d%H%M%S)" >> "$GITHUB_OUTPUT"
+
+      - name: Build + push changed images
+        if: steps.diff.outputs.changed_count != '0'
+        id: push
+        run: |
+          set -uo pipefail
+          published=()
+          failed=()
+          push_services=()
+          push_images=()
+          for svc in $(python3 -c 'import json,sys;print(" ".join(json.loads(sys.argv[1])))' '${{ steps.diff.outputs.changed }}'); do
+            name="${svc#lvx-}"
+            image="ghcr.io/${GHCR_OWNER}/${GHCR_REPO}/${svc}:latest"
+            echo "::group::build ${image}"
+            if docker build \
+              --platform linux/amd64 \
+              --file Dockerfile \
+              --target "versioned-${name}" \
+              --build-arg "BUILD_VERSION=${{ steps.stamp.outputs.version }}" \
+              --tag "${image}" \
+              .; then
+              push_services+=("${svc}")
+              push_images+=("${image}")
+            else
+              failed+=("${svc}")
+            fi
+            echo "::endgroup::"
+          done
+
+          push_log_dir="$(mktemp -d)"
+          push_with_retry() {
+            local image="$1" log_file="$2" attempt
+            for ((attempt = 1; attempt <= PUSH_MAX_ATTEMPTS; attempt++)); do
+              if docker push "${image}"; then
+                return 0
+              fi
+              if ((attempt < PUSH_MAX_ATTEMPTS)); then
+                printf 'Retry %d/%d for %s after %ss\n' \
+                  "$((attempt + 1))" "$PUSH_MAX_ATTEMPTS" "${image}" "$PUSH_RETRY_DELAY_SECONDS" >> "${log_file}"
+                sleep "${PUSH_RETRY_DELAY_SECONDS}"
+              fi
+            done
+            return 1
+          }
+
+          wait_for_slot() {
+            while (( $(jobs -rp | wc -l) >= PUSH_CONCURRENCY )); do
+              wait -n || true
+            done
+          }
+
+          push_pids=()
+          push_logs=()
+          for index in "${!push_images[@]}"; do
+            wait_for_slot
+            log_file="${push_log_dir}/${index}.log"
+            echo "Starting push: ${push_images[index]}"
+            (push_with_retry "${push_images[index]}" "${log_file}" > "${log_file}" 2>&1) &
+            push_pids+=("$!")
+            push_logs+=("${log_file}")
+          done
+
+          for index in "${!push_pids[@]}"; do
+            echo "::group::push ${push_images[index]}"
+            if wait "${push_pids[index]}"; then
+              published+=("${push_services[index]}")
+            else
+              failed+=("${push_services[index]}")
+            fi
+            cat "${push_logs[index]}"
+            echo "::endgroup::"
+          done
+          rm -rf "${push_log_dir}"
+
+          echo "published=$(python3 -c 'import json,sys;print(json.dumps(sys.argv[1:]))' "${published[@]}")" >> "$GITHUB_OUTPUT"
+          echo "published_count=${#published[@]}" >> "$GITHUB_OUTPUT"
+          echo "failed=$(python3 -c 'import json,sys;print(json.dumps(sys.argv[1:]))' "${failed[@]}")" >> "$GITHUB_OUTPUT"
+          echo "failed_count=${#failed[@]}" >> "$GITHUB_OUTPUT"
+
+          if [ "${#failed[@]}" -gt 0 ]; then
+            echo "Failed to publish: ${failed[*]}" >&2
+            exit 1
+          fi
+
+      - name: Announce publish
+        if: always() && (steps.push.outputs.published_count != '0' || steps.templates.outputs.changed_count != '0')
+        # Must run before "Commit versions/mcp-version.json" below, which
+        # switches the working tree to the orphan `versions` branch (wiping
+        # everything but versions/mcp-version.json) — this step needs the
+        # real checkout to run .github/scripts/announce_publish.py.
+        # Audience matrix lives in issue #25's description (see
+        # .github/scripts/announce_publish.py) so it can be edited without a
+        # PR — #25 itself is config only, we only ever read it here, never
+        # post to it. Each distinct audience group gets its own brand-new
+        # issue (labeled mcp-notification, left open — closing it would fire
+        # a second "closed" notification to the same subscribers) so a team
+        # is only ever @mentioned for the MCPs that concern them, with no
+        # shared thread for unrelated future mentions to bleed through.
+        # Uses MCP_NOTIFY_TOKEN (a fine-grained PAT from a real account),
+        # not GITHUB_TOKEN — GitHub does not reliably deliver @mention
+        # notifications for content authored by the github-actions[bot]
+        # identity, confirmed by testing both issue-creation and comment
+        # mentions from the bot vs. an equivalent PAT-authored comment.
+        env:
+          GH_TOKEN: ${{ secrets.MCP_NOTIFY_TOKEN }}
+          NOTIFY_ISSUE: "25"
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+        run: |
+          # Repo's squash setting appends every squashed commit's message
+          # below the title, so match only the title line, not the whole
+          # (possibly multi-line) COMMIT_MSG.
+          title_line="${COMMIT_MSG%%$'\n'*}"
+          pr_ref=""
+          if [[ "${title_line}" =~ \(#([0-9]+)\)[[:space:]]*$ ]]; then
+            pr_ref="#${BASH_REMATCH[1]}"
+          fi
+          gh issue view "${NOTIFY_ISSUE}" --repo "${{ github.repository }}" --json body -q .body \
+            > "${RUNNER_TEMP}/issue-body.md"
+          groups_dir="${RUNNER_TEMP}/announce-groups"
+          python3 .github/scripts/announce_publish.py \
+            --issue-body-file "${RUNNER_TEMP}/issue-body.md" \
+            --published '${{ steps.push.outputs.published || '[]' }}' \
+            --template-changes '${{ steps.templates.outputs.service_map }}' \
+            --gh-org "${{ github.repository_owner }}" \
+            --ghcr-owner "${GHCR_OWNER}" \
+            --repo-name "${GHCR_REPO}" \
+            --pr-ref "${pr_ref}" \
+            --output-dir "${groups_dir}"
+          for title_file in "${groups_dir}"/group-*.title.txt; do
+            [ -e "${title_file}" ] || continue
+            body_file="${title_file%.title.txt}.body.md"
+            gh issue create --repo "${{ github.repository }}" \
+              --title "$(cat "${title_file}")" \
+              --body-file "${body_file}" \
+              --label mcp-notification
+          done
+
+      - name: Update versions/mcp-version.json
+        if: always() && steps.push.outputs.published_count != '0'
+        env:
+          LOCAL_SHA: ${{ steps.diff.outputs.local_sha }}
+          CHANGED: ${{ steps.push.outputs.published }}
+          VERSION: ${{ steps.stamp.outputs.version }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+
+          path = "versions/mcp-version.json"
+          data = json.loads(open(path).read() or "{}")
+          local_sha = json.loads(os.environ["LOCAL_SHA"])
+          changed = json.loads(os.environ["CHANGED"])
+          version = os.environ["VERSION"]
+          commit_msg = os.environ.get("COMMIT_MSG", "").splitlines()[0] if os.environ.get("COMMIT_MSG") else version
+
+          for svc in changed:
+              entry = data.get(svc, {})
+              entry["version"] = version
+              entry["sha"] = local_sha[svc]
+              entry["release-message"] = commit_msg
+              data[svc] = entry
+
+          with open(path, "w") as f:
+              json.dump(data, f, indent=2, sort_keys=True)
+              f.write("\n")
+          PY
+
+      - name: Commit versions/mcp-version.json
+        if: always() && steps.push.outputs.published_count != '0'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          metadata_file="${RUNNER_TEMP}/mcp-version.json"
+          cp versions/mcp-version.json "${metadata_file}"
+          git restore --staged --worktree versions/mcp-version.json || rm -f versions/mcp-version.json
+          if git show-ref --verify --quiet refs/remotes/origin/versions; then
+            git switch --detach origin/versions
+          else
+            git switch --orphan versions-release
+          fi
+          git rm -rf . || true
+          mkdir -p versions
+          cp "${metadata_file}" versions/mcp-version.json
+          git add versions/mcp-version.json
+          git commit -m "chore: release ${{ steps.diff.outputs.changed }} ${{ steps.stamp.outputs.version }}"
+          git push origin HEAD:versions
+
+      - name: Summary
+        if: always()
+        run: |
+          if [ "${{ steps.diff.outputs.changed_count }}" = "0" ]; then
+            echo "Nothing changed — no images published."
+          else
+            echo "Published: ${{ steps.push.outputs.published }} @ ${{ steps.stamp.outputs.version }}"
+            if [ "${{ steps.push.outputs.failed_count }}" != "0" ]; then
+              echo "Failed: ${{ steps.push.outputs.failed }}"
+            fi
+          fi

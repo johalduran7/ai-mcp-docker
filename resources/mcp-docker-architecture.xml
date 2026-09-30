@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net">
+  <diagram name="Page-1" id="YM1POcyH_nfRtWSJ37WX">
+    <mxGraphModel dx="2559" dy="2177" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="T9gI9KEVYma_tIed2Swi-1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=none;fillColor=#F8FBFF;" value="" vertex="1">
+          <mxGeometry height="900" width="1660" x="-20" y="-50" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-2" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=28;fontStyle=1;fontColor=#111111;" value="MCP DOCKER REGISTRY — CONTAINERIZED MARKETPLACE ARCHITECTURE" vertex="1">
+          <mxGeometry height="40" width="1300" x="120" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-3" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=14;fontStyle=2;fontColor=#5E6C84;" value="Contributor → Source Repo → Release → GHCR → Consumer → AI Host → MCP Servers" vertex="1">
+          <mxGeometry height="24" width="1300" x="120" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#D8E4EF;fillColor=#FFFFFF;fontColor=#1F2933;fontStyle=1;align=center;verticalAlign=top;spacingTop=10;fontSize=16;shadow=1;" value="CONTRIBUTORS / DEVELOPERS" vertex="1">
+          <mxGeometry height="180" width="240" x="30" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-5" parent="1" style="html=1;verticalLabelPosition=bottom;align=center;labelBackgroundColor=#ffffff;verticalAlign=top;strokeWidth=2;strokeColor=#0080F0;shadow=0;dashed=0;shape=mxgraph.ios7.icons.user;" value="DevOps / SRE" vertex="1">
+          <mxGeometry height="36" width="36" x="125" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-6" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;fontColor=#5E6C84;" value="- Branch &amp; edit servers/*&#xa;- Open PR&#xa;- Reviewed &amp; merged" vertex="1">
+          <mxGeometry height="60" width="220" x="35" y="212" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-7" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#D6C2A7;strokeWidth=2;fillColor=#FFFFFF;fontColor=#1F2933;fontStyle=1;align=center;verticalAlign=top;spacingTop=10;fontSize=16;shadow=1;" value="SOURCE REPO — github.com/johalduran7/ai-mcp-docker" vertex="1">
+          <mxGeometry height="160" width="340" x="350" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-8" parent="1" style="shape=mxgraph.weblogos.github;dashed=0;outlineConnect=0;html=1;verticalLabelPosition=bottom;verticalAlign=top;align=center;fontSize=11;" value="" vertex="1">
+          <mxGeometry height="48" width="48" x="361" y="183" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-9" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;fontColor=#172B4D;spacingLeft=10;" value="• Shared Dockerfile (per-server stages)&#xa;• docker-compose.yml (build / smoke / push)&#xa;• publish.yml CI (SHA + date tags)&#xa;• servers/&lt;name&gt;/ source&#xa;• AI host config templates (mac / linux / windows)" vertex="1">
+          <mxGeometry height="100" width="240" x="413" y="168" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#2D96A8;fillColor=#2E9CC0;fontColor=#FFFFFF;fontStyle=1;align=center;verticalAlign=middle;fontSize=16;shadow=1;" value="RELEASE PIPELINE&lt;br&gt;&lt;font style=&quot;font-size:11px;&quot;&gt;publish.yml (CI)&lt;br&gt;• Build linux/amd64 image&lt;br&gt;• Tag with SHA + date&lt;br&gt;• docker push to GHCR&lt;br&gt;• Update versions file&lt;/font&gt;" vertex="1">
+          <mxGeometry height="160" width="230" x="768" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-11" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=none;fillColor=#F6E7D7;opacity=75;shadow=1;" value="" vertex="1">
+          <mxGeometry height="240" width="480" x="1095" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-12" parent="1" style="ellipse;whiteSpace=wrap;html=1;strokeColor=none;fillColor=#F59B23;fontColor=#FFFFFF;fontStyle=1;align=center;verticalAlign=middle;fontSize=14;shadow=1;" value="GHCR" vertex="1">
+          <mxGeometry height="50" width="50" x="990" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-13" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#D6C2A7;strokeWidth=2;fillColor=#FFFFFF;fontColor=#1F2933;fontStyle=1;align=center;verticalAlign=top;fontSize=18;spacingTop=8;shadow=1;" value="DOCKER REGISTRY (GHCR)&lt;br&gt;&lt;font style=&quot;font-size:12px; color:#5B6670;&quot;&gt;ghcr.io/jduranlv/lvx-*&lt;br&gt;github.com/jduranlv?tab=packages&lt;/font&gt;" vertex="1">
+          <mxGeometry height="83" width="440" x="1115" y="98" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-14" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#D7DDE4;fillColor=#FFF7EC;fontColor=#55423C;fontStyle=1;align=center;verticalAlign=middle;fontSize=11;shadow=1;" value="lvx-jira" vertex="1">
+          <mxGeometry height="30" width="100" x="1115" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-15" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#D7DDE4;fillColor=#FFF7EC;fontColor=#55423C;fontStyle=1;align=center;verticalAlign=middle;fontSize=11;shadow=1;" value="lvx-confluence" vertex="1">
+          <mxGeometry height="30" width="100" x="1225" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-16" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#D7DDE4;fillColor=#FFF7EC;fontColor=#55423C;fontStyle=1;align=center;verticalAlign=middle;fontSize=11;shadow=1;" value="lvx-aws" vertex="1">
+          <mxGeometry height="30" width="100" x="1335" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-17" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#D7DDE4;fillColor=#FFF7EC;fontColor=#55423C;fontStyle=1;align=center;verticalAlign=middle;fontSize=11;shadow=1;" value="lvx-gitlab" vertex="1">
+          <mxGeometry height="30" width="100" x="1445" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-18" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#D7DDE4;fillColor=#FFF7EC;fontColor=#55423C;fontStyle=1;align=center;verticalAlign=middle;fontSize=11;shadow=1;" value="lvx-github" vertex="1">
+          <mxGeometry height="30" width="100" x="1115" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-19" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#D7DDE4;fillColor=#FFF7EC;fontColor=#55423C;fontStyle=1;align=center;verticalAlign=middle;fontSize=11;shadow=1;" value="lvx-grafana" vertex="1">
+          <mxGeometry height="30" width="100" x="1225" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-20" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#D7DDE4;fillColor=#FFF7EC;fontColor=#55423C;fontStyle=1;align=center;verticalAlign=middle;fontSize=11;shadow=1;" value="lvx-opensearch" vertex="1">
+          <mxGeometry height="30" width="100" x="1335" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-21" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#D7DDE4;fillColor=#FFF7EC;fontColor=#55423C;fontStyle=1;align=center;verticalAlign=middle;fontSize=11;shadow=1;" value="lvx-argocd" vertex="1">
+          <mxGeometry height="30" width="100" x="1445" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-22" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=11;fontStyle=2;fontColor=#5E6C84;" value="tags: :latest · :YYYY.MM.DD-&lt;sha&gt;   (traceable to source PR)" vertex="1">
+          <mxGeometry height="20" width="440" x="1127" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-23" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#7A41C2;fillColor=#8C52D1;fontColor=#FFFFFF;fontStyle=1;align=center;verticalAlign=top;fontSize=14;spacingTop=8;shadow=1;" value="GOVERNANCE &amp; ACCESS&#xa;&#xa;• Repo access request&#xa;• Approval → grants&#xa;  read:packages on GHCR&#xa;• PR-gated releases&#xa;• Tokens never committed" vertex="1">
+          <mxGeometry height="180" width="230" x="340" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-24" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#C24B1C;fillColor=#E96821;fontColor=#FFFFFF;fontStyle=1;align=center;verticalAlign=top;fontSize=14;spacingTop=8;shadow=1;" value="TRACEABILITY &amp; UPGRADES&#xa;&#xa;• check_for_updates tool&#xa;  on every server&#xa;• version_notifier.py&#xa;• Returns exact&#xa;  docker pull command&#xa;• Restart AI host" vertex="1">
+          <mxGeometry height="180" width="230" x="600" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-25" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#D8E4EF;fillColor=#FFFFFF;fontColor=#1F2933;fontStyle=1;align=center;verticalAlign=top;spacingTop=10;fontSize=16;shadow=1;" value="CONSUMERS (DevOps &amp; SRE users)" vertex="1">
+          <mxGeometry height="200" width="900" x="50" y="560" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-26" parent="1" style="html=1;verticalLabelPosition=bottom;align=center;labelBackgroundColor=#ffffff;verticalAlign=top;strokeWidth=2;strokeColor=#0080F0;shadow=0;dashed=0;shape=mxgraph.ios7.icons.user;" value="Engineer" vertex="1">
+          <mxGeometry height="36" width="36" x="90" y="600" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-27" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#0F5AB2;fillColor=#2496ED;fontColor=#FFFFFF;fontStyle=1;align=center;verticalAlign=middle;fontSize=14;shadow=1;" value="🐳 DOCKER ENGINE&lt;br&gt;&lt;font style=&quot;font-size:11px;&quot;&gt;docker pull ghcr.io/jduranlv/lvx-*&lt;/font&gt;" vertex="1">
+          <mxGeometry height="70" width="220" x="170" y="595" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-28" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#6B7280;fillColor=#F3F4F6;fontColor=#1F2933;fontStyle=1;align=center;verticalAlign=middle;fontSize=12;shadow=1;" value="🍎 macOS&#xa;Docker Desktop" vertex="1">
+          <mxGeometry height="55" width="120" x="70" y="680" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-29" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#6B7280;fillColor=#F3F4F6;fontColor=#1F2933;fontStyle=1;align=center;verticalAlign=middle;fontSize=12;shadow=1;" value="🐧 Linux&#xa;Docker Engine" vertex="1">
+          <mxGeometry height="55" width="120" x="200" y="680" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-30" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#6B7280;fillColor=#F3F4F6;fontColor=#1F2933;fontStyle=1;align=center;verticalAlign=middle;fontSize=12;shadow=1;" value="🪟 Windows&#xa;Docker Desktop + WSL2" vertex="1">
+          <mxGeometry height="55" width="150" x="330" y="680" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-31" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#D8E4EF;fillColor=#F7FAFF;fontColor=#0747A6;fontStyle=1;align=center;verticalAlign=top;spacingTop=6;fontSize=13;shadow=0;" value="AI HOSTS (stdio MCP)" vertex="1">
+          <mxGeometry height="120" width="410" x="500" y="595" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-32" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#7A41C2;fillColor=#8C52D1;fontColor=#FFFFFF;fontStyle=1;align=center;verticalAlign=middle;fontSize=11;shadow=1;" value="Claude&lt;br&gt;Desktop" vertex="1">
+          <mxGeometry height="60" width="110" x="510" y="630" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-33" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#7A41C2;fillColor=#8C52D1;fontColor=#FFFFFF;fontStyle=1;align=center;verticalAlign=middle;fontSize=11;shadow=1;" value="Claude&lt;br&gt;CLI" vertex="1">
+          <mxGeometry height="60" width="110" x="640" y="630" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-34" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#0F5AB2;fillColor=#2496ED;fontColor=#FFFFFF;fontStyle=1;align=center;verticalAlign=middle;fontSize=11;shadow=1;" value="VS Code&lt;br&gt;Copilot" vertex="1">
+          <mxGeometry height="60" width="110" x="770" y="630" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-35" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=10;fontStyle=2;fontColor=#5E6C84;" value="claude_desktop_config.json · claude mcp add-json · .vscode/mcp.json" vertex="1">
+          <mxGeometry height="20" width="410" x="500" y="695" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-36" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#D8E4EF;fillColor=#FFFFFF;fontColor=#1F2933;fontStyle=1;align=center;verticalAlign=top;spacingTop=8;fontSize=14;shadow=1;" value="DOWNSTREAM SYSTEMS (called by MCP servers)" vertex="1">
+          <mxGeometry height="160" width="500" x="1075" y="575" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-37" parent="1" style="shape=image;html=1;image=img/lib/atlassian/Jira_Logo.svg;verticalLabelPosition=bottom;verticalAlign=top;align=center;fontSize=10;" value="Jira" vertex="1">
+          <mxGeometry height="40" width="40" x="1095" y="615" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-38" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=none;fillColor=#2684FF;fontColor=#FFFFFF;fontStyle=1;align=center;verticalAlign=middle;fontSize=10;shadow=1;" value="Confluence" vertex="1">
+          <mxGeometry height="40" width="72" x="1145" y="615" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-39" parent="1" style="ellipse;whiteSpace=wrap;html=1;strokeColor=none;fillColor=#F59B23;fontColor=#FFFFFF;fontStyle=1;align=center;verticalAlign=middle;fontSize=11;shadow=1;" value="AWS" vertex="1">
+          <mxGeometry height="40" width="40" x="1227" y="615" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-40" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=none;fillColor=#E24329;fontColor=#FFFFFF;fontStyle=1;align=center;verticalAlign=middle;fontSize=10;shadow=1;" value="GitLab" vertex="1">
+          <mxGeometry height="40" width="60" x="1277" y="615" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-41" parent="1" style="shape=mxgraph.weblogos.github;dashed=0;outlineConnect=0;html=1;verticalLabelPosition=bottom;verticalAlign=top;align=center;fontSize=10;" value="GitHub" vertex="1">
+          <mxGeometry height="40" width="40" x="1347" y="615" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-42" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=none;fillColor=#F46800;fontColor=#FFFFFF;fontStyle=1;align=center;verticalAlign=middle;fontSize=10;shadow=1;" value="Grafana&#xa;/ Loki" vertex="1">
+          <mxGeometry height="40" width="70" x="1397" y="615" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-43" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=none;fillColor=#005EB8;fontColor=#FFFFFF;fontStyle=1;align=center;verticalAlign=middle;fontSize=10;shadow=1;" value="OpenSearch" vertex="1">
+          <mxGeometry height="40" width="80" x="1145" y="675" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-44" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=none;fillColor=#EF7B4D;fontColor=#FFFFFF;fontStyle=1;align=center;verticalAlign=middle;fontSize=10;shadow=1;" value="ArgoCD" vertex="1">
+          <mxGeometry height="40" width="70" x="1240" y="675" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-45" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;fontStyle=1;fontColor=#111111;" value="PR &amp; MERGE" vertex="1">
+          <mxGeometry height="20" width="90" x="265" y="158" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-46" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;fontStyle=1;fontColor=#111111;" value="TRIGGER&#xa;RELEASE" vertex="1">
+          <mxGeometry height="30" width="90" x="681" y="151" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-47" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;fontStyle=1;fontColor=#111111;" value="docker push" vertex="1">
+          <mxGeometry height="20" width="90" x="1001" y="204" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-48" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;fontStyle=1;fontColor=#111111;" value="docker pull" vertex="1">
+          <mxGeometry height="20" width="100" x="500" y="475" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-49" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;fontStyle=1;fontColor=#111111;" value="stdio MCP" vertex="1">
+          <mxGeometry height="20" width="100" x="400" y="608" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-50" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;fontStyle=1;fontColor=#111111;" value="tools" vertex="1">
+          <mxGeometry height="20" width="60" x="920" y="636" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-51" edge="1" parent="1" source="T9gI9KEVYma_tIed2Swi-4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;strokeColor=#0E677D;strokeWidth=3;endArrow=block;endFill=1;" target="T9gI9KEVYma_tIed2Swi-7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-52" edge="1" parent="1" source="T9gI9KEVYma_tIed2Swi-7" style="edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;strokeColor=#0E677D;strokeWidth=3;endArrow=block;endFill=1;" target="T9gI9KEVYma_tIed2Swi-10">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-53" edge="1" parent="1" source="T9gI9KEVYma_tIed2Swi-10" style="edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;strokeColor=#C24B1C;strokeWidth=3;endArrow=block;endFill=1;" target="T9gI9KEVYma_tIed2Swi-13">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-54" edge="1" parent="1" source="T9gI9KEVYma_tIed2Swi-7" style="edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;strokeColor=#7A41C2;strokeWidth=2;endArrow=block;endFill=1;dashed=1;" target="T9gI9KEVYma_tIed2Swi-23">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-55" edge="1" parent="1" source="T9gI9KEVYma_tIed2Swi-11" style="edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;strokeColor=#C24B1C;strokeWidth=2;endArrow=block;endFill=1;dashed=1;exitX=0;exitY=0.75;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="T9gI9KEVYma_tIed2Swi-24">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1000" y="270" />
+              <mxPoint x="1000" y="290" />
+              <mxPoint x="715" y="290" />
+            </Array>
+            <mxPoint x="1095" y="294" as="sourcePoint" />
+            <mxPoint x="715" y="424" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-56" edge="1" parent="1" source="T9gI9KEVYma_tIed2Swi-23" style="edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;strokeColor=#7A41C2;strokeWidth=2;endArrow=block;endFill=1;dashed=1;" target="T9gI9KEVYma_tIed2Swi-25">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-57" edge="1" parent="1" source="T9gI9KEVYma_tIed2Swi-11" style="edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;strokeColor=#0F5AB2;strokeWidth=4;endArrow=block;endFill=1;" target="T9gI9KEVYma_tIed2Swi-27">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1335" y="530" />
+              <mxPoint x="280" y="530" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-58" edge="1" parent="1" source="T9gI9KEVYma_tIed2Swi-27" style="edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;strokeColor=#0F5AB2;strokeWidth=3;endArrow=block;endFill=1;" target="T9gI9KEVYma_tIed2Swi-31">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-59" edge="1" parent="1" source="T9gI9KEVYma_tIed2Swi-31" style="edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;strokeColor=#1F536B;strokeWidth=3;endArrow=block;endFill=1;" target="T9gI9KEVYma_tIed2Swi-36">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-60" edge="1" parent="1" source="T9gI9KEVYma_tIed2Swi-24" style="edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;strokeColor=#C24B1C;strokeWidth=2;endArrow=block;endFill=1;dashed=1;" target="T9gI9KEVYma_tIed2Swi-31">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="T9gI9KEVYma_tIed2Swi-61" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=11;fontStyle=2;fontColor=#5E6C84;" value="Access model: request repo access → GHCR package read is auto-granted · All images tagged with source SHA · check_for_updates surfaces new versions in-chat" vertex="1">
+          <mxGeometry height="20" width="1400" x="60" y="770" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

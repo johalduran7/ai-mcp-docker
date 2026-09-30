@@ -1,0 +1,161 @@
+services:
+  lvx-jira:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: Dockerfile
+      network: host
+      target: versioned-jira
+      args:
+        BUILD_VERSION: ${BUILD_VERSION:-v20200101000000}
+    image: ghcr.io/${GHCR_OWNER:-johalduran7}/${GHCR_REPO:-ai-mcp-docker}/lvx-jira:${GHCR_TAG:-latest}
+    environment:
+      JIRA_BASE_URL: ${JIRA_BASE_URL:-https://jira.mycompany.com}
+      JIRA_TOKEN: ${JIRA_TOKEN:-}
+      JIRA_CLOUD_BASE_URL: ${JIRA_CLOUD_BASE_URL:-https://mycompany-prod.atlassian.net}
+      JIRA_CLOUD_EMAIL: ${JIRA_CLOUD_EMAIL:-}
+      JIRA_CLOUD_TOKEN: ${JIRA_CLOUD_TOKEN:-}
+    command: ["python", "/app/servers/jira/server.py"]
+    stdin_open: true
+    tty: false
+
+  lvx-confluence:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: Dockerfile
+      network: host
+      target: versioned-confluence
+      args:
+        BUILD_VERSION: ${BUILD_VERSION:-v20200101000000}
+    image: ghcr.io/${GHCR_OWNER:-johalduran7}/${GHCR_REPO:-ai-mcp-docker}/lvx-confluence:${GHCR_TAG:-latest}
+    environment:
+      CONFLUENCE_CLOUD_BASE_URL: ${CONFLUENCE_CLOUD_BASE_URL:-https://mycompany-prod.atlassian.net/wiki}
+      CONFLUENCE_CLOUD_EMAIL: ${CONFLUENCE_CLOUD_EMAIL:-}
+      CONFLUENCE_CLOUD_TOKEN: ${CONFLUENCE_CLOUD_TOKEN:-}
+      CONFLUENCE_ONPREM_BASE_URL: ${CONFLUENCE_ONPREM_BASE_URL:-https://library.mycompany.com}
+      CONFLUENCE_ONPREM_TOKEN: ${CONFLUENCE_ONPREM_TOKEN:-}
+    command: ["python", "/app/servers/confluence/server.py"]
+    stdin_open: true
+    tty: false
+
+  lvx-aws:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: Dockerfile
+      network: host
+      target: versioned-aws
+      args:
+        BUILD_VERSION: ${BUILD_VERSION:-v20200101000000}
+    image: ghcr.io/${GHCR_OWNER:-johalduran7}/${GHCR_REPO:-ai-mcp-docker}/lvx-aws:${GHCR_TAG:-latest}
+    environment:
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      AWS_CONFIG_FILE: /root/.aws/config
+      AWS_SHARED_CREDENTIALS_FILE: /root/.aws/credentials
+    volumes:
+      - ${HOST_AWS_DIR:-${HOME}/.aws}:/root/.aws:rw
+      - ${HOST_AWSUME_DIR:-${HOME}/.awsume}:/root/.awsume:rw
+    command: ["python", "/app/servers/aws/server.py"]
+    stdin_open: true
+    tty: false
+
+  lvx-gitlab:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: Dockerfile
+      network: host
+      target: versioned-gitlab
+      args:
+        BUILD_VERSION: ${BUILD_VERSION:-v20200101000000}
+    image: ghcr.io/${GHCR_OWNER:-johalduran7}/${GHCR_REPO:-ai-mcp-docker}/lvx-gitlab:${GHCR_TAG:-latest}
+    environment:
+      GITLAB_ENDPOINT: ${GITLAB_ENDPOINT:-https://vcs.build.mycompany.net/eng}
+      GITLAB_TOKEN: ${GITLAB_TOKEN:-}
+    command: ["python", "/app/servers/gitlab/server.py"]
+    stdin_open: true
+    tty: false
+
+  lvx-github:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: Dockerfile
+      network: host
+      target: versioned-github
+      args:
+        BUILD_VERSION: ${BUILD_VERSION:-v20200101000000}
+    image: ghcr.io/${GHCR_OWNER:-johalduran7}/${GHCR_REPO:-ai-mcp-docker}/lvx-github:${GHCR_TAG:-latest}
+    environment:
+      GITHUB_ORG: ${GITHUB_ORG:-myorgname2}
+      GITHUB_BASE_URL: ${GITHUB_BASE_URL:-https://api.github.com}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+    command: ["python", "/app/servers/github/server.py"]
+    stdin_open: true
+    tty: false
+
+  lvx-grafana:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: Dockerfile
+      network: host
+      target: versioned-grafana
+      args:
+        BUILD_VERSION: ${BUILD_VERSION:-v20200101000000}
+    image: ghcr.io/${GHCR_OWNER:-johalduran7}/${GHCR_REPO:-ai-mcp-docker}/lvx-grafana:${GHCR_TAG:-latest}
+    environment:
+      GRAFANA_URL_TEMPLATE: ${GRAFANA_URL_TEMPLATE:-http://logging-ui.service.{env}.mycompany.net:8080}
+      GRAFANA_USERNAME: ${GRAFANA_USERNAME:-}
+      GRAFANA_PASSWORD: ${GRAFANA_PASSWORD:-}
+      OKTA_DOMAIN: ${OKTA_DOMAIN:-mycompany.okta.com}
+      OKTA_USERNAME: ${OKTA_USERNAME:-}
+      OKTA_PASSWORD: ${OKTA_PASSWORD:-}
+    command: ["python", "/app/servers/grafana/server.py"]
+    stdin_open: true
+    tty: false
+
+  lvx-opensearch:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: Dockerfile
+      network: host
+      target: versioned-opensearch
+      args:
+        BUILD_VERSION: ${BUILD_VERSION:-v20200101000000}
+    image: ghcr.io/${GHCR_OWNER:-johalduran7}/${GHCR_REPO:-ai-mcp-docker}/lvx-opensearch:${GHCR_TAG:-latest}
+    environment:
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      AWS_CONFIG_FILE: /root/.aws/config
+      AWS_SHARED_CREDENTIALS_FILE: /root/.aws/credentials
+    volumes:
+      - ${HOST_AWS_DIR:-${HOME}/.aws}:/root/.aws:rw
+      - ${HOST_AWSUME_DIR:-${HOME}/.awsume}:/root/.awsume:rw
+    command: ["python", "/app/servers/opensearch/server.py"]
+    stdin_open: true
+    tty: false
+
+  lvx-argocd:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: Dockerfile
+      network: host
+      target: versioned-argocd
+      args:
+        BUILD_VERSION: ${BUILD_VERSION:-v20200101000000}
+    image: ghcr.io/${GHCR_OWNER:-johalduran7}/${GHCR_REPO:-ai-mcp-docker}/lvx-argocd:${GHCR_TAG:-latest}
+    environment:
+      ARGOCD_SERVER: ${ARGOCD_SERVER:-argocd.devops.mycompany.com}
+      ARGOCD_CONFIG_DIR: /root/.config/argocd
+      ARGOCD_SSO_PORT: ${ARGOCD_SSO_PORT:-8085}
+      ARGOCD_LOGIN_TIMEOUT: ${ARGOCD_LOGIN_TIMEOUT:-180}
+    volumes:
+      - ${HOST_ARGOCD_DIR:-${HOME}/.config/argocd}:/root/.config/argocd:rw
+    ports:
+      - "${ARGOCD_SSO_PORT:-8085}:${ARGOCD_SSO_PORT:-8085}"
+    command: ["python", "/app/servers/argocd/server.py"]
+    stdin_open: true
+    tty: false

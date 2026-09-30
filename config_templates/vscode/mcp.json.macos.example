@@ -1,0 +1,240 @@
+{
+  "servers": {
+    "jira": {
+      "type": "stdio",
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "--platform",
+        "linux/amd64",
+        "-e",
+        "JIRA_BASE_URL",
+        "-e",
+        "JIRA_TOKEN",
+        "-e",
+        "JIRA_CLOUD_BASE_URL",
+        "-e",
+        "JIRA_CLOUD_EMAIL",
+        "-e",
+        "JIRA_CLOUD_TOKEN",
+        "ghcr.io/johalduran7/ai-mcp-docker/lvx-jira:latest"
+      ],
+      "env": {
+        "JIRA_BASE_URL": "https://jira.mycompany.com",
+        "JIRA_TOKEN": "${input:jira_token}",
+        "JIRA_CLOUD_BASE_URL": "https://mycompany-prod.atlassian.net",
+        "JIRA_CLOUD_EMAIL": "${input:jira_mycompany_email}",
+        "JIRA_CLOUD_TOKEN": "${input:jira_mycompany_token}"
+      }
+    },
+    "confluence": {
+      "type": "stdio",
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "--platform",
+        "linux/amd64",
+        "-e",
+        "CONFLUENCE_CLOUD_BASE_URL",
+        "-e",
+        "CONFLUENCE_CLOUD_EMAIL",
+        "-e",
+        "CONFLUENCE_CLOUD_TOKEN",
+        "-e",
+        "CONFLUENCE_ONPREM_BASE_URL",
+        "-e",
+        "CONFLUENCE_ONPREM_TOKEN",
+        "ghcr.io/johalduran7/ai-mcp-docker/lvx-confluence:latest",
+        "python",
+        "/app/servers/confluence/server.py"
+      ],
+      "env": {
+        "CONFLUENCE_CLOUD_BASE_URL": "https://mycompany-prod.atlassian.net/wiki",
+        "CONFLUENCE_CLOUD_EMAIL": "${input:confluence_mycompany_email}",
+        "CONFLUENCE_CLOUD_TOKEN": "${input:confluence_mycompany_token}",
+        "CONFLUENCE_ONPREM_BASE_URL": "https://library.mycompany.com",
+        "CONFLUENCE_ONPREM_TOKEN": "${input:confluence_mycompany_token}"
+      }
+    },
+    "aws": {
+      "type": "stdio",
+      "command": "sh",
+      "args": [
+        "-lc",
+        "docker run --rm -i --platform linux/amd64 -v \"$HOME/.aws:/root/.aws:rw\" -v \"$HOME/.awsume:/root/.awsume:rw\" -e AWS_CONFIG_FILE=/root/.aws/config -e AWS_SHARED_CREDENTIALS_FILE=/root/.aws/credentials ghcr.io/johalduran7/ai-mcp-docker/lvx-aws:latest python /app/servers/aws/server.py"
+      ]
+    },
+    "gitlab": {
+      "type": "stdio",
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "--platform",
+        "linux/amd64",
+        "-e",
+        "GITLAB_ENDPOINT",
+        "-e",
+        "GITLAB_TOKEN",
+        "ghcr.io/johalduran7/ai-mcp-docker/lvx-gitlab:latest",
+        "python",
+        "/app/servers/gitlab/server.py"
+      ],
+      "env": {
+        "GITLAB_ENDPOINT": "https://vcs.build.mycompany.net/eng",
+        "GITLAB_TOKEN": "${input:gitlab_token}"
+      }
+    },
+    "github": {
+      "type": "stdio",
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "--platform",
+        "linux/amd64",
+        "-e",
+        "GITHUB_ORG",
+        "-e",
+        "GITHUB_TOKEN",
+        "ghcr.io/johalduran7/ai-mcp-docker/lvx-github:latest",
+        "python",
+        "/app/servers/github/server.py"
+      ],
+      "env": {
+        "GITHUB_ORG": "myorgname2",
+        "GITHUB_TOKEN": "${input:github_token}"
+      }
+    },
+    "grafana": {
+      "type": "stdio",
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "--platform",
+        "linux/amd64",
+        "-e",
+        "GRAFANA_URL_TEMPLATE",
+        "-e",
+        "GRAFANA_USERNAME",
+        "-e",
+        "GRAFANA_PASSWORD",
+        "-e",
+        "OKTA_DOMAIN",
+        "-e",
+        "OKTA_USERNAME",
+        "-e",
+        "OKTA_PASSWORD",
+        "ghcr.io/johalduran7/ai-mcp-docker/lvx-grafana:latest",
+        "python",
+        "/app/servers/grafana/server.py"
+      ],
+      "env": {
+        "GRAFANA_URL_TEMPLATE": "http://logging-ui.service.{env}.mycompany.net:8080",
+        "GRAFANA_USERNAME": "${input:grafana_username}",
+        "GRAFANA_PASSWORD": "${input:grafana_password}",
+        "OKTA_DOMAIN": "mycompany.okta.com",
+        "OKTA_USERNAME": "${input:okta_username}",
+        "OKTA_PASSWORD": "${input:okta_password}"
+      }
+    },
+    "opensearch": {
+      "type": "stdio",
+      "command": "sh",
+      "args": [
+        "-lc",
+        "docker run --rm -i --platform linux/amd64 -v \"$HOME/.aws:/root/.aws:rw\" -v \"$HOME/.awsume:/root/.awsume:rw\" -e AWS_CONFIG_FILE=/root/.aws/config -e AWS_SHARED_CREDENTIALS_FILE=/root/.aws/credentials ghcr.io/johalduran7/ai-mcp-docker/lvx-opensearch:latest python /app/servers/opensearch/server.py"
+      ]
+    },
+    "argocd": {
+      "type": "stdio",
+      "command": "sh",
+      "args": [
+        "-lc",
+        "docker network create argocd-net >/dev/null 2>&1; IMG=ghcr.io/johalduran7/ai-mcp-docker/lvx-argocd:latest; VOL=\"$HOME/.config/argocd:/root/.config/argocd:rw\"; IMG_ID=$(docker image inspect -f '{{.Id}}' \"$IMG\" 2>/dev/null | sed 's/^sha256://' | cut -c1-8); ANCHOR=\"argocd-mcp-8085-${IMG_ID}\"; RUNNING=$(docker inspect -f '{{.State.Running}}' \"$ANCHOR\" 2>/dev/null); if [ \"$RUNNING\" != \"true\" ]; then for old in $(docker ps -aq --filter \"publish=8085\" 2>/dev/null); do oldname=$(docker inspect -f '{{.Name}}' \"$old\" 2>/dev/null | sed 's#^/##'); [ \"$oldname\" != \"$ANCHOR\" ] && docker rm -f \"$old\" >/dev/null 2>&1; done; docker run -d --rm --platform linux/amd64 --name \"$ANCHOR\" --network argocd-net -p 8085:8085 -v \"$VOL\" -e ARGOCD_SERVER=argocd.devops.mycompany.com -e ARGOCD_SSO_PORT=8085 \"$IMG\" sleep infinity >/dev/null 2>&1 || true; fi; TRIES=0; while [ \"$(docker inspect -f '{{.State.Running}}' \"$ANCHOR\" 2>/dev/null)\" != \"true\" ] && [ $TRIES -lt 50 ]; do sleep 0.1; TRIES=$((TRIES+1)); done; exec docker exec -i \"$ANCHOR\" python /app/servers/argocd/server.py"
+      ]
+    }
+  },
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "jira_token",
+      "description": "Jira bearer token for jira",
+      "password": true
+    },
+    {
+      "type": "promptString",
+      "id": "jira_mycompany_email",
+      "description": "Atlassian account email for mycompany Jira (Basic auth)",
+      "password": false
+    },
+    {
+      "type": "promptString",
+      "id": "jira_mycompany_token",
+      "description": "Atlassian Cloud API token for mycompany Jira",
+      "password": true
+    },
+    {
+      "type": "promptString",
+      "id": "confluence_mycompany_email",
+      "description": "Atlassian account email for mycompany Confluence (Basic auth)",
+      "password": false
+    },
+    {
+      "type": "promptString",
+      "id": "confluence_mycompany_token",
+      "description": "Atlassian Cloud API token for mycompany Confluence",
+      "password": true
+    },
+    {
+      "type": "promptString",
+      "id": "confluence_mycompany_token",
+      "description": "MyCompany Confluence PAT (Bearer)",
+      "password": true
+    },
+    {
+      "type": "promptString",
+      "id": "gitlab_token",
+      "description": "GitLab private token for gitlab",
+      "password": true
+    },
+    {
+      "type": "promptString",
+      "id": "github_token",
+      "description": "GitHub PAT (read-only) for github",
+      "password": true
+    },
+    {
+      "type": "promptString",
+      "id": "grafana_username",
+      "description": "LDAP username for grafana",
+      "password": false
+    },
+    {
+      "type": "promptString",
+      "id": "grafana_password",
+      "description": "LDAP password for grafana",
+      "password": true
+    },
+    {
+      "type": "promptString",
+      "id": "okta_username",
+      "description": "Okta username/email for MyCompany Grafana (mon-*) SSO",
+      "password": false
+    },
+    {
+      "type": "promptString",
+      "id": "okta_password",
+      "description": "Okta password for MyCompany Grafana (mon-*) SSO",
+      "password": true
+    }
+  ]
+}

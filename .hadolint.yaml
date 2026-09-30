@@ -1,0 +1,6 @@
+ignored:
+  # Not pinning apt/pip versions here is intentional: awscli, awsume, and
+  # the base OS packages should track upstream security patches on every
+  # rebuild rather than being frozen to a version we'd have to manually bump.
+  - DL3008 # Pin versions in apt-get install
+  - DL3013 # Pin versions in pip install

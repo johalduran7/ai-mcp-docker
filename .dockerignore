@@ -1,0 +1,11 @@
+# Never include local secrets in build context
+.env
+**/.env
+**/.env.*
+
+# Keep examples available
+!**/.env.example
+
+# Python cache
+__pycache__/
+*.pyc

@@ -1,0 +1,177 @@
+{
+  "_readme": [
+    "Native Linux config for Claude Desktop MCP servers.",
+    "Every entry runs with --network host: Docker's default bridge network",
+    "can't see this host's VPN routes/DNS, so internal-only hosts (GitLab,",
+    "Grafana, ArgoCD) would be unreachable from inside the container",
+    "without it. Public endpoints (GitHub, Jira, Confluence) work either way.",
+    "Save this file (renamed to claude_desktop_config.json) at:",
+    "  ~/.config/Claude/claude_desktop_config.json"
+  ],
+  "mcpServers": {
+    "jira": {
+      "command": "docker",
+      "env": {
+        "JIRA_BASE_URL": "https://jira.mycompany.com",
+        "JIRA_TOKEN": "paste-your-jira-token-here",
+        "JIRA_CLOUD_BASE_URL": "https://mycompany-prod.atlassian.net",
+        "JIRA_CLOUD_EMAIL": "your_email@mycompany.com",
+        "JIRA_CLOUD_TOKEN": "paste-your-mycompany-atlassian-api-token-here"
+      },
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "--network",
+        "host",
+        "--platform",
+        "linux/amd64",
+        "-e",
+        "JIRA_BASE_URL",
+        "-e",
+        "JIRA_TOKEN",
+        "-e",
+        "JIRA_CLOUD_BASE_URL",
+        "-e",
+        "JIRA_CLOUD_EMAIL",
+        "-e",
+        "JIRA_CLOUD_TOKEN",
+        "ghcr.io/johalduran7/ai-mcp-docker/lvx-jira:latest"
+      ]
+    },
+    "confluence": {
+      "command": "docker",
+      "env": {
+        "CONFLUENCE_CLOUD_BASE_URL": "https://mycompany-prod.atlassian.net/wiki",
+        "CONFLUENCE_CLOUD_EMAIL": "your_email@mycompany.com",
+        "CONFLUENCE_CLOUD_TOKEN": "paste-your-mycompany-atlassian-api-token-here",
+        "CONFLUENCE_ONPREM_BASE_URL": "https://library.mycompany.com",
+        "CONFLUENCE_ONPREM_TOKEN": "paste-your-mycompany-confluence-pat-here"
+      },
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "--network",
+        "host",
+        "--platform",
+        "linux/amd64",
+        "-e",
+        "CONFLUENCE_CLOUD_BASE_URL",
+        "-e",
+        "CONFLUENCE_CLOUD_EMAIL",
+        "-e",
+        "CONFLUENCE_CLOUD_TOKEN",
+        "-e",
+        "CONFLUENCE_ONPREM_BASE_URL",
+        "-e",
+        "CONFLUENCE_ONPREM_TOKEN",
+        "ghcr.io/johalduran7/ai-mcp-docker/lvx-confluence:latest",
+        "python",
+        "/app/servers/confluence/server.py"
+      ]
+    },
+    "aws": {
+      "command": "sh",
+      "args": [
+        "-lc",
+        "docker run --rm -i --network host --platform linux/amd64 -v \"$HOME/.aws:/root/.aws:rw\" -v \"$HOME/.awsume:/root/.awsume:rw\" -e AWS_CONFIG_FILE=/root/.aws/config -e AWS_SHARED_CREDENTIALS_FILE=/root/.aws/credentials ghcr.io/johalduran7/ai-mcp-docker/lvx-aws:latest python /app/servers/aws/server.py"
+      ]
+    },
+    "gitlab": {
+      "command": "docker",
+      "env": {
+        "GITLAB_ENDPOINT": "https://vcs.build.mycompany.net/eng",
+        "GITLAB_TOKEN": "paste-your-gitlab-token-here"
+      },
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "--network",
+        "host",
+        "--platform",
+        "linux/amd64",
+        "-e",
+        "GITLAB_ENDPOINT",
+        "-e",
+        "GITLAB_TOKEN",
+        "ghcr.io/johalduran7/ai-mcp-docker/lvx-gitlab:latest",
+        "python",
+        "/app/servers/gitlab/server.py"
+      ]
+    },
+    "github": {
+      "command": "docker",
+      "env": {
+        "GITHUB_ORG": "myorgname2",
+        "GITHUB_TOKEN": "paste-your-github-token-here"
+      },
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "--network",
+        "host",
+        "--platform",
+        "linux/amd64",
+        "-e",
+        "GITHUB_ORG",
+        "-e",
+        "GITHUB_TOKEN",
+        "ghcr.io/johalduran7/ai-mcp-docker/lvx-github:latest",
+        "python",
+        "/app/servers/github/server.py"
+      ]
+    },
+    "grafana": {
+      "command": "docker",
+      "env": {
+        "GRAFANA_URL_TEMPLATE": "http://logging-ui.service.{env}.mycompany.net:8080",
+        "GRAFANA_USERNAME": "your-ldap-username",
+        "GRAFANA_PASSWORD": "your-ldap-password",
+        "OKTA_DOMAIN": "mycompany.okta.com",
+        "OKTA_USERNAME": "your-okta-username",
+        "OKTA_PASSWORD": "your-okta-password"
+      },
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "--network",
+        "host",
+        "--platform",
+        "linux/amd64",
+        "-e",
+        "GRAFANA_URL_TEMPLATE",
+        "-e",
+        "GRAFANA_USERNAME",
+        "-e",
+        "GRAFANA_PASSWORD",
+        "-e",
+        "OKTA_DOMAIN",
+        "-e",
+        "OKTA_USERNAME",
+        "-e",
+        "OKTA_PASSWORD",
+        "ghcr.io/johalduran7/ai-mcp-docker/lvx-grafana:latest",
+        "python",
+        "/app/servers/grafana/server.py"
+      ]
+    },
+    "opensearch": {
+      "command": "sh",
+      "args": [
+        "-lc",
+        "docker run --rm -i --network host --platform linux/amd64 -v \"$HOME/.aws:/root/.aws:rw\" -v \"$HOME/.awsume:/root/.awsume:rw\" -e AWS_CONFIG_FILE=/root/.aws/config -e AWS_SHARED_CREDENTIALS_FILE=/root/.aws/credentials ghcr.io/johalduran7/ai-mcp-docker/lvx-opensearch:latest python /app/servers/opensearch/server.py"
+      ]
+    },
+    "argocd": {
+      "command": "sh",
+      "args": [
+        "-lc",
+        "IMG=ghcr.io/johalduran7/ai-mcp-docker/lvx-argocd:latest; VOL=\"$HOME/.config/argocd:/root/.config/argocd:rw\"; IMG_ID=$(docker image inspect -f '{{.Id}}' \"$IMG\" 2>/dev/null | sed 's/^sha256://' | cut -c1-8); ANCHOR=\"argocd-mcp-8085-${IMG_ID}\"; RUNNING=$(docker inspect -f '{{.State.Running}}' \"$ANCHOR\" 2>/dev/null); if [ \"$RUNNING\" != \"true\" ]; then for old in $(docker ps -aq --filter \"name=^argocd-mcp-8085\" 2>/dev/null); do oldname=$(docker inspect -f '{{.Name}}' \"$old\" 2>/dev/null | sed 's#^/##'); [ \"$oldname\" != \"$ANCHOR\" ] && docker rm -f \"$old\" >/dev/null 2>&1; done; docker run -d --rm --platform linux/amd64 --name \"$ANCHOR\" --network host -v \"$VOL\" -e ARGOCD_SERVER=argocd.devops.mycompany.com -e ARGOCD_SSO_PORT=8085 \"$IMG\" sleep infinity >/dev/null 2>&1 || true; fi; TRIES=0; while [ \"$(docker inspect -f '{{.State.Running}}' \"$ANCHOR\" 2>/dev/null)\" != \"true\" ] && [ $TRIES -lt 50 ]; do sleep 0.1; TRIES=$((TRIES+1)); done; exec docker exec -i \"$ANCHOR\" python /app/servers/argocd/server.py"
+      ]
+    }
+  }
+}

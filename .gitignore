@@ -1,0 +1,11 @@
+.env
+__pycache__/
+*.pyc
+
+claude_cli_mcp_add.md
+claude_desktop_config.json
+mcp.json
+
+!*.example.json
+!*.example.md
+!*.json.example

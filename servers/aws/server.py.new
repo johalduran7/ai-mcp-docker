@@ -1,0 +1,350 @@
+import configparser
+import os
+import subprocess
+from pathlib import Path
+from typing import Any
+
+import boto3
+from botocore.exceptions import BotoCoreError, ClientError
+from mcp.server.fastmcp import FastMCP
+
+mcp = FastMCP("lvx-aws")
+
+
+def _aws_config_path() -> Path:
+    configured = os.environ.get("AWS_CONFIG_FILE")
+    if configured:
+        return Path(configured).expanduser()
+    return Path.home() / ".aws" / "config"
+
+
+def _read_aws_profiles() -> list[str]:
+    config_path = _aws_config_path()
+    parser = configparser.RawConfigParser()
+    if not config_path.exists():
+        return []
+    parser.read(config_path)
+
+    profiles: list[str] = []
+    for section in parser.sections():
+        if section == "default":
+            profiles.append("default")
+            continue
+        if section.startswith("profile "):
+            profiles.append(section.replace("profile ", "", 1))
+    return sorted(set(profiles))
+
+
+def _resolve_session_profile(profile_name: str, session_profile: str | None) -> str:
+    if session_profile:
+        return session_profile
+    if profile_name == "default":
+        return "default"
+    return f"{profile_name}-session"
+
+
+def _region_from_config(profile_name: str) -> str | None:
+    config_path = _aws_config_path()
+    parser = configparser.RawConfigParser()
+    if not config_path.exists():
+        return None
+    parser.read(config_path)
+
+    section = "default" if profile_name == "default" else f"profile {profile_name}"
+    if parser.has_option(section, "region"):
+        return parser.get(section, "region")
+    return None
+
+
+def _session_for(profile_name: str, session_profile: str | None, region: str | None) -> boto3.Session:
+    effective_profile = _resolve_session_profile(profile_name, session_profile)
+    effective_region = region or _region_from_config(profile_name) or os.environ.get("AWS_DEFAULT_REGION") or "us-east-1"
+    return boto3.Session(profile_name=effective_profile, region_name=effective_region)
+
+
+def _session_expired(exc: Exception) -> bool:
+    message = str(exc).lower()
+    markers = (
+        "expiredtoken",
+        "token has expired",
+        "security token included in the request is expired",
+        "expired token",
+        "unable to locate credentials",
+        "the config profile",
+        "could not be found",
+    )
+    return any(marker in message for marker in markers)
+
+
+def _needs_mfa(text: str) -> bool:
+    lowered = text.lower()
+    markers = (
+        "enter mfa",
+        "mfa token",
+        "multi-factor",
+        "mfa code",
+    )
+    return any(marker in lowered for marker in markers)
+
+
+def _run_awsume(
+    profile_name: str,
+    session_profile: str,
+    mfa_code: str = "",
+    duration_seconds: int = 38800,
+) -> dict[str, Any]:
+    """Run awsume for a profile. If mfa_code is empty, rely on cached MFA session."""
+    awsume_bin = os.environ.get("AWSUME_BIN", "awsume")
+    duration = max(900, min(duration_seconds, 43200))
+
+    command = [awsume_bin, profile_name, "-o", session_profile]
+    env = os.environ.copy()
+    env["HOME"] = env.get("HOME", str(Path.home()))
+    env["AWSUME_DURATION"] = str(duration)
+
+    stdin_input = f"{mfa_code.strip()}\n" if mfa_code.strip() else ""
+    result = subprocess.run(
+        command,
+        input=stdin_input,
+        text=True,
+        capture_output=True,
+        env=env,
+        timeout=180,
+        check=False,
+    )
+
+    combined_output = f"{result.stdout}\n{result.stderr}".strip()
+
+    if result.returncode != 0:
+        needs_mfa = _needs_mfa(combined_output) or (not mfa_code.strip() and "eof" in combined_output.lower())
+        return {
+            "ok": False,
+            "profile_name": profile_name,
+            "session_profile": session_profile,
+            "duration_seconds": duration,
+            "needs_mfa": needs_mfa,
+            "stdout": result.stdout.strip(),
+            "stderr": result.stderr.strip(),
+            "error": (result.stderr or result.stdout or "awsume failed").strip(),
+        }
+
+    return {
+        "ok": True,
+        "profile_name": profile_name,
+        "session_profile": session_profile,
+        "duration_seconds": duration,
+        "needs_mfa": False,
+        "stdout": result.stdout.strip(),
+        "stderr": result.stderr.strip(),
+    }
+
+
+def _try_refresh_and_call(
+    profile_name: str,
+    session_profile: str,
+    mfa_code: str,
+    duration_seconds: int,
+    original_exc: Exception,
+    caller,
+) -> dict[str, Any]:
+    """Attempt awsume refresh (cached session first, then MFA if provided) and re-run the caller."""
+    refresh = _run_awsume(
+        profile_name=profile_name,
+        session_profile=session_profile,
+        mfa_code=mfa_code,
+        duration_seconds=duration_seconds,
+    )
+
+    if not refresh["ok"]:
+        payload = {
+            "ok": False,
+            "profile_name": profile_name,
+            "session_profile": session_profile,
+            "error": str(original_exc),
+            "refresh_error": refresh.get("error"),
+            "session_expired": True,
+        }
+        if refresh.get("needs_mfa"):
+            payload["needs_mfa"] = True
+            payload["mfa_tool_hint"] = (
+                f"Ask the user for the MFA code for profile '{profile_name}', then call the same tool again with "
+                f"mfa_code=<code>."
+            )
+        else:
+            payload["how_to_refresh"] = f"awsume {profile_name} -o {session_profile}"
+        return payload
+
+    result = caller()
+    if isinstance(result, dict):
+        result["refreshed_with_awsume"] = True
+        if refresh.get("stdout"):
+            result["refresh_output"] = refresh["stdout"]
+    return result
+
+
+@mcp.tool()
+def list_config_profiles() -> list[str]:
+    """List AWS base profiles read from ~/.aws/config."""
+    return _read_aws_profiles()
+
+
+@mcp.tool()
+def awsume_refresh_session(
+    profile_name: str,
+    mfa_code: str = "",
+    session_profile: str = "",
+    duration_seconds: int = 38800,
+) -> dict[str, Any]:
+    """Refresh credentials for a profile via awsume.
+
+    Tries the awsume cached MFA session first (no MFA required). If awsume asks for MFA,
+    the response contains needs_mfa=true so the host can prompt the user for the code and call again.
+    """
+    effective_session = _resolve_session_profile(profile_name, session_profile or None)
+    refresh = _run_awsume(
+        profile_name=profile_name,
+        session_profile=effective_session,
+        mfa_code=mfa_code,
+        duration_seconds=duration_seconds,
+    )
+
+    if refresh["ok"]:
+        refresh["credentials_file"] = os.environ.get(
+            "AWS_SHARED_CREDENTIALS_FILE",
+            str(Path.home() / ".aws" / "credentials"),
+        )
+
+    return refresh
+
+
+@mcp.tool()
+def auth_status(
+    profile_name: str,
+    session_profile: str = "",
+    region: str = "",
+    auto_refresh_on_expired: bool = True,
+    mfa_code: str = "",
+    duration_seconds: int = 38800,
+) -> dict[str, Any]:
+    """Validate active AWS credentials for a profile using STS GetCallerIdentity.
+
+    On expired session, tries to refresh via awsume automatically. Only surfaces an MFA prompt if awsume needs it.
+    """
+    def call() -> dict[str, Any]:
+        session = _session_for(
+            profile_name=profile_name,
+            session_profile=session_profile or None,
+            region=region or None,
+        )
+        identity = session.client("sts").get_caller_identity()
+        return {
+            "ok": True,
+            "profile_name": profile_name,
+            "session_profile": _resolve_session_profile(profile_name, session_profile or None),
+            "region": session.region_name,
+            "account": identity.get("Account"),
+            "arn": identity.get("Arn"),
+            "user_id": identity.get("UserId"),
+        }
+
+    try:
+        return call()
+    except Exception as exc:  # noqa: BLE001
+        if auto_refresh_on_expired and _session_expired(exc):
+            try:
+                return _try_refresh_and_call(
+                    profile_name=profile_name,
+                    session_profile=_resolve_session_profile(profile_name, session_profile or None),
+                    mfa_code=mfa_code,
+                    duration_seconds=duration_seconds,
+                    original_exc=exc,
+                    caller=call,
+                )
+            except Exception as retry_exc:  # noqa: BLE001
+                return {
+                    "ok": False,
+                    "profile_name": profile_name,
+                    "session_profile": _resolve_session_profile(profile_name, session_profile or None),
+                    "error": str(exc),
+                    "retry_error": str(retry_exc),
+                    "session_expired": True,
+                }
+        return {
+            "ok": False,
+            "profile_name": profile_name,
+            "session_profile": _resolve_session_profile(profile_name, session_profile or None),
+            "error": str(exc),
+        }
+
+
+@mcp.tool()
+def list_ecs_clusters(
+    profile_name: str,
+    session_profile: str = "",
+    region: str = "",
+    max_results: int = 100,
+    auto_refresh_on_expired: bool = True,
+    mfa_code: str = "",
+    duration_seconds: int = 38800,
+) -> dict[str, Any]:
+    """List ECS clusters for the given profile/session profile.
+
+    On expired session, tries to refresh via awsume automatically. Only surfaces an MFA prompt if awsume needs it.
+    """
+    if max_results < 1:
+        raise ValueError("max_results must be >= 1")
+    if max_results > 100:
+        max_results = 100
+
+    def call() -> dict[str, Any]:
+        session = _session_for(
+            profile_name=profile_name,
+            session_profile=session_profile or None,
+            region=region or None,
+        )
+        ecs = session.client("ecs")
+        response = ecs.list_clusters(maxResults=max_results)
+        cluster_arns = response.get("clusterArns", [])
+        names = [arn.split("/")[-1] for arn in cluster_arns]
+        return {
+            "ok": True,
+            "profile_name": profile_name,
+            "session_profile": _resolve_session_profile(profile_name, session_profile or None),
+            "region": session.region_name,
+            "cluster_count": len(cluster_arns),
+            "clusters": names,
+            "cluster_arns": cluster_arns,
+        }
+
+    try:
+        return call()
+    except (ClientError, BotoCoreError, ValueError) as exc:
+        if auto_refresh_on_expired and _session_expired(exc):
+            try:
+                return _try_refresh_and_call(
+                    profile_name=profile_name,
+                    session_profile=_resolve_session_profile(profile_name, session_profile or None),
+                    mfa_code=mfa_code,
+                    duration_seconds=duration_seconds,
+                    original_exc=exc,
+                    caller=call,
+                )
+            except Exception as retry_exc:  # noqa: BLE001
+                return {
+                    "ok": False,
+                    "profile_name": profile_name,
+                    "session_profile": _resolve_session_profile(profile_name, session_profile or None),
+                    "error": str(exc),
+                    "retry_error": str(retry_exc),
+                    "session_expired": True,
+                }
+        return {
+            "ok": False,
+            "profile_name": profile_name,
+            "session_profile": _resolve_session_profile(profile_name, session_profile or None),
+            "error": str(exc),
+        }
+
+
+if __name__ == "__main__":
+    mcp.run(transport="stdio")

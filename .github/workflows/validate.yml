@@ -1,0 +1,143 @@
+name: Validate
+
+# Mandatory PR check. Runs on the PR itself (opened + every push while the
+# PR is open, via "synchronize") so branch protection can require this
+# exact job name ("validate") on main. No plain push trigger — that would
+# double-run the same checks on every commit once a PR exists. Open a draft
+# PR early if you want feedback before it's ready for review.
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: validate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Record authors for new MCPs
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git fetch origin "${BASE_REF}" "${HEAD_REF}"
+          git switch --detach "origin/${HEAD_REF}"
+          author_name="$(gh api "users/${AUTHOR}" --jq '.name // .login')"
+          python3 .github/scripts/record_initial_server_authors.py \
+            --base-ref "origin/${BASE_REF}" \
+            --author "${AUTHOR}" \
+            --author-name "${author_name}"
+          if git diff --quiet -- README.md; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          git commit -m "chore: record MCP author"
+          git push origin "HEAD:${HEAD_REF}"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install validator dependencies
+        run: pip install --quiet pyyaml
+
+      - name: Repo structure validation
+        # Single source of truth for every structural rule: server folder
+        # shape, no duplicate MCP names, docker-compose.yml <-> servers/
+        # parity, Dockerfile stage parity, README/servers-README coverage,
+        # and config_templates coverage for every AI host. See
+        # .github/scripts/validate_repo.py for the full rule list.
+        run: python3 .github/scripts/validate_repo.py
+
+      - name: docker compose config sanity
+        # Confirms compose interpolation + build contexts are well-formed
+        # before we spend time actually building anything below.
+        run: docker compose config --quiet
+
+      - name: Dockerfile lint (hadolint)
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+          config: .hadolint.yaml
+          failure-threshold: error
+
+      - name: Discover services from compose
+        id: services
+        run: |
+          services="$(docker compose config --services | sort | tr '\n' ' ')"
+          echo "list=${services}" >> "$GITHUB_OUTPUT"
+
+      - name: Detect touched services (git diff vs base branch)
+        id: diff
+        # Independent of publish.yml — no dependency on the `versions`
+        # branch or previously-published SHAs. Just answers: did this PR
+        # touch a service's own folder, or something shared by all of them
+        # (Dockerfile, resources/version_notifier.py, any requirements.txt)?
+        # See detect_touched_services.py for the exact trigger rules.
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git fetch origin "${BASE_REF}"
+          python3 .github/scripts/detect_touched_services.py \
+            --base-ref "origin/${BASE_REF}" \
+            --services ${{ steps.services.outputs.list }} \
+            --github-output "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build changed server images (no push)
+        if: steps.diff.outputs.changed_count != '0'
+        # This is the actual "does it build" gate — syntax/lint checks above
+        # don't catch a broken pip install, a missing COPY target, or a
+        # runtime import error baked into the image. Scoped to whatever
+        # detect_touched_services.py found: either the specific service(s)
+        # this PR touched, or every service if it touched something shared
+        # (a shared base-layer change can break all of them). Skipped
+        # entirely if nothing service-relevant changed (e.g. a docs-only PR).
+        run: docker compose build ${{ join(fromJson(steps.diff.outputs.changed), ' ') }}
+        env:
+          DOCKER_BUILDKIT: "1"
+          COMPOSE_DOCKER_CLI_BUILD: "1"
+
+      - name: MCP protocol handshake (changed servers)
+        if: steps.diff.outputs.changed_count != '0'
+        # Language-neutral proof the container actually speaks MCP: sends a
+        # real JSON-RPC initialize request over stdio and requires a valid
+        # response. Works identically regardless of the server's runtime.
+        run: python3 .github/scripts/validate_mcp_protocol.py ${{ join(fromJson(steps.diff.outputs.changed), ' ') }}
+
+      - name: Server unit tests (changed servers)
+        if: steps.diff.outputs.changed_count != '0'
+        # Opt-in per server: any servers/<name>/test_*.py runs inside that
+        # server's freshly-built image, so tests execute against the exact
+        # dependency set that ships. This is where guardrails on destructive
+        # tools are proven — the handshake check above only shows the
+        # server starts.
+        run: |
+          for svc in ${{ join(fromJson(steps.diff.outputs.changed), ' ') }}; do
+            name="${svc#lvx-}"
+            if ls "servers/${name}"/test_*.py >/dev/null 2>&1; then
+              echo "::group::unit tests for ${svc}"
+              docker compose run --rm -T --entrypoint python "${svc}" \
+                -m unittest discover -s "/app/servers/${name}" -p 'test_*.py' -v
+              echo "::endgroup::"
+            else
+              echo "no unit tests for ${svc} — skipping"
+            fi
+          done
