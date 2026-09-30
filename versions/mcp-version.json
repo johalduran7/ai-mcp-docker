@@ -1,0 +1,42 @@
+{
+  "lvx-argocd": {
+    "release-message": "Added arch template",
+    "sha": "sha256:b3597c3542bd85105f8cfc9b3f9ea5932d2b3bc45b1f0403ac9bd75a71f0b56d",
+    "version": "v20260930125440"
+  },
+  "lvx-aws": {
+    "release-message": "Added arch template",
+    "sha": "sha256:f3cd2e8f0b5c6e00aa025080a0c17f7ec6ecf9bc8963f68896da7a27d170dda8",
+    "version": "v20260930125440"
+  },
+  "lvx-confluence": {
+    "release-message": "Added arch template",
+    "sha": "sha256:3d614693513cec9404f491cf1ac38953d7435c1a143cb655d10f406262939559",
+    "version": "v20260930125440"
+  },
+  "lvx-github": {
+    "release-message": "Added arch template",
+    "sha": "sha256:7dd677beb5b002cfb1b768b69c4df673de5d69de7e194fff2e7a1b602aef7060",
+    "version": "v20260930125440"
+  },
+  "lvx-gitlab": {
+    "release-message": "Added arch template",
+    "sha": "sha256:df71d709ba5ef541cb70bfdcc511a80ce898e55ff1feeee20db1372b7f96f5a5",
+    "version": "v20260930125440"
+  },
+  "lvx-grafana": {
+    "release-message": "Added arch template",
+    "sha": "sha256:b0194ae94dd47a9f0b6ad26061ffb8bd22043ba5e50aaee76047574eb3baa501",
+    "version": "v20260930125440"
+  },
+  "lvx-jira": {
+    "release-message": "Added arch template",
+    "sha": "sha256:d699b9ae0a3303381d28ad203c6e534b64146d0e5f1f37512c2a793174d35181",
+    "version": "v20260930125440"
+  },
+  "lvx-opensearch": {
+    "release-message": "Added arch template",
+    "sha": "sha256:f09ffc52f46b61dd23d14acaf3bf05f1e8b6b37d791f34dbffabc9d4f12c2e2b",
+    "version": "v20260930125440"
+  }
+}
