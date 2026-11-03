@@ -100,6 +100,12 @@ jobs:
             --github-output "$GITHUB_OUTPUT"
 
       - uses: docker/setup-buildx-action@v3
+        with:
+          # Pinned: buildx v0.37.2 started rejecting Compose's bake-generated
+          # `network: host` build config with "additional privileges requested:
+          # pass --allow=network.host", which `docker compose build` has no way
+          # to pass through. v0.37.1 is the last version confirmed working here.
+          version: v0.37.1
 
       - name: Build changed server images (no push)
         if: steps.diff.outputs.changed_count != '0'

@@ -1,0 +1,198 @@
+name: Publish dev version to GHCR
+
+# Versioned sharing channel for EXISTING servers. A push to a branch named
+# dev-lvx-<mcp name>-v<N> (e.g. dev-lvx-grafana-v2) validates the one named
+# server and pushes ghcr.io/johalduran7/ai-mcp-docker/lvx-<name>:v<N>,
+# but only if servers/<name>/ itself has non-doc changes versus main.
+# Changes to any other server never cause a build or publish here.
+#
+# Never touches :latest, versions/mcp-version.json, or announcements — those
+# stay exclusive to publish.yml (post-merge on main). It also never creates a
+# new package: the server must already exist on main and lvx-<name>:latest
+# must already be in GHCR, so new MCPs only enter through the normal PR flow.
+#
+# Triggers on every dev-lvx-* branch (not just well-formed ones) so a bad
+# version or name fails loudly. Branches without the dev-lvx- prefix are
+# ordinary branches and never run this workflow. A push that only changes
+# other files (READMEs, templates, docs, ...) does not start a run at all.
+on:
+  push:
+    branches:
+      - "dev-lvx-**"
+    paths:
+      - "servers/**"
+      - "Dockerfile"
+      - "docker-compose.yml"
+      - "!**/*.md"
+
+concurrency:
+  group: publish-dev-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  GHCR_OWNER: johalduran7
+  GHCR_REPO: ai-mcp-docker
+
+jobs:
+  gate:
+    name: gate
+    runs-on: ubuntu-latest
+    outputs:
+      proceed: ${{ steps.check.outputs.proceed }}
+      service: ${{ steps.check.outputs.service }}
+      tag: ${{ steps.check.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check branch name and existing package
+        id: check
+        env:
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          echo "proceed=false" >> "$GITHUB_OUTPUT"
+
+          hint="Expected dev-lvx-<mcp name>-v<N> where <N> is a whole number, e.g. dev-lvx-grafana-v2"
+
+          # Version is any whole number starting at 1 (v1, v2, v3, ...); v1.3, v0, v01 or a missing version are rejected.
+          if [[ ! "${BRANCH}" =~ -v[1-9][0-9]*$ ]]; then
+            echo "::error::Branch '${BRANCH}' must end with -v<N>, a whole number starting at 1 (v1, v2, v3, ...). Not allowed: v1.3, v0, v01, or no version. ${hint}"
+            exit 1
+          fi
+
+          re='^dev-lvx-([a-z0-9_]+(-[a-z0-9_]+)*)-v([1-9][0-9]*)$'
+          if [[ ! "${BRANCH}" =~ ${re} ]]; then
+            echo "::error::Branch '${BRANCH}' has an invalid MCP name (lowercase letters, digits, '-' and '_' only). ${hint}"
+            exit 1
+          fi
+          name="${BASH_REMATCH[1]}"
+          tag="v${BASH_REMATCH[3]}"
+
+          git fetch origin main
+          if ! git cat-file -e "origin/main:servers/${name}/README.md" 2>/dev/null; then
+            echo "::error::servers/${name}/ does not exist on main. Dev branches only version EXISTING servers; new MCPs go through the normal PR flow."
+            exit 1
+          fi
+
+          # The path filter above can't be scoped per server, so confirm the named
+          # server's own folder changed; otherwise skip without building anything.
+          changed_files="$(git diff --name-only "origin/main...HEAD" -- "servers/${name}/" | grep -v '\.md$' || true)"
+          if [ -z "${changed_files}" ]; then
+            echo "Skipping: branch '${BRANCH}' targets servers/${name}/, but that folder has no non-doc changes versus main."
+            echo "Files changed on this branch versus main:"
+            git diff --name-only "origin/main...HEAD" | sed 's/^/  /'
+            echo "::notice::Skipped: servers/${name}/ was not modified, so lvx-${name}:${tag} was not built or published."
+            exit 0
+          fi
+
+          image="ghcr.io/${GHCR_OWNER}/${GHCR_REPO}/lvx-${name}"
+          if ! docker manifest inspect "${image}:latest" >/dev/null 2>&1; then
+            echo "::error::Package ${image}:latest does not exist in GHCR. Dev branches cannot create new packages."
+            exit 1
+          fi
+
+          {
+            echo "proceed=true"
+            echo "service=lvx-${name}"
+            echo "tag=${tag}"
+          } >> "$GITHUB_OUTPUT"
+
+  deploy:
+    name: validate and publish
+    needs: gate
+    if: needs.gate.outputs.proceed == 'true'
+    runs-on: ubuntu-latest
+    env:
+      SERVICE: ${{ needs.gate.outputs.service }}
+      # Compose tags the built image with GHCR_TAG, so the image that is
+      # tested below is exactly the one pushed. BUILD_VERSION=dev makes the
+      # server's check_for_updates report a developer build instead of
+      # comparing against the released-version registry.
+      GHCR_TAG: ${{ needs.gate.outputs.tag }}
+      BUILD_VERSION: dev
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install validator dependencies
+        run: pip install --quiet pyyaml
+
+      - name: Repo structure validation
+        run: python3 .github/scripts/validate_repo.py
+
+      - name: docker compose config sanity
+        run: docker compose config --quiet
+
+      - name: Dockerfile lint (hadolint)
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+          config: .hadolint.yaml
+          failure-threshold: error
+
+      - uses: docker/setup-buildx-action@v3
+        with:
+          # Same pin as validate.yml (newer buildx rejects Compose's `network: host`).
+          version: v0.37.1
+
+      - name: Build image (no push yet)
+        run: docker compose build "${SERVICE}"
+        env:
+          DOCKER_BUILDKIT: "1"
+          COMPOSE_DOCKER_CLI_BUILD: "1"
+
+      - name: MCP protocol handshake
+        run: python3 .github/scripts/validate_mcp_protocol.py "${SERVICE}"
+
+      - name: Server unit tests
+        run: |
+          name="${SERVICE#lvx-}"
+          if ls "servers/${name}"/test_*.py >/dev/null 2>&1; then
+            docker compose run --rm -T --entrypoint python "${SERVICE}" \
+              -m unittest discover -s "/app/servers/${name}" -p 'test_*.py' -v
+          else
+            echo "no unit tests for ${SERVICE} — skipping"
+          fi
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push versioned image
+        run: |
+          image="ghcr.io/${GHCR_OWNER}/${GHCR_REPO}/${SERVICE}:${GHCR_TAG}"
+          for attempt in 1 2 3; do
+            if docker push "${image}"; then
+              {
+                echo "Published \`${image}\` from ${GITHUB_SHA}"
+                echo
+                echo "\`docker pull ${image}\`"
+              } >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::Failed to push ${image}"
+          exit 1

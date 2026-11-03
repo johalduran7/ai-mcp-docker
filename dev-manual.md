@@ -6,7 +6,14 @@ runtime. The integration standard is the container contract: the image must run
 the MCP server over standard input/output and must not write protocol logs to
 standard output.
 
-## Contributor Workflow
+## Choose Your Path
+
+| I want to... | Path | Result |
+|---|---|---|
+| Add a brand-new MCP, change shared project files, or ship a change straight to everyone | [Path A: Contributor Workflow](#path-a-contributor-workflow) | Merged PR publishes `:latest` |
+| Develop a new version of an **existing** MCP and let the team test it before it reaches `latest` | [Path B: Versioned Dev Workflow](#path-b-versioned-dev-workflow-new-version-of-an-existing-mcp) | Branch push publishes `:v<N>`; `:latest` is untouched until the PR merges |
+
+## Path A: Contributor Workflow
 
 1. Clone and branch.
    ```bash
@@ -307,17 +314,161 @@ Update the root server table and `servers/README.md` in the same change.
 
 ## Step 7: Release
 
-Publishing is CI-only, no manual pushes:
+Publishing is CI-only, no manual pushes. There are two release channels:
+
+| Channel | Trigger | Published tag | Pipeline |
+|---|---|---|---|
+| Released | Merge to `main` | `:latest` | `publish` |
+| Dev version | Push to `dev-lvx-<name>-v<N>` that changes server files, `Dockerfile` or `docker-compose.yml` | `:v<N>` | `publish-dev` (see [Path B](#path-b-versioned-dev-workflow-new-version-of-an-existing-mcp)) |
+
+For the released channel:
 
 1. Open a PR. The `validate` pipeline builds every image (no push) and must
    pass before merge.
 2. Merge to `main`. The `publish` pipeline hashes each service's source,
    builds + pushes only what changed to GHCR, and stamps the version.
 
+A PR opened from a `dev-lvx-<name>-v<N>` branch follows this same released
+flow. The `:v<N>` tag it was tested under is not removed automatically; delete
+it by hand after the merge (see Path B, step 6).
+
 Locally you only need to confirm your image builds:
 
 ```bash
 docker compose build lvx-<name>
+```
+
+## Path B: Versioned Dev Workflow (new version of an existing MCP)
+
+Use this to work on an MCP that is already published (for example `lvx-jira`)
+without changing `:latest`. Each dev branch publishes its own tag, so the team can
+pull and try your build while it is still under review.
+
+In this section, `<mcp name>` is the server folder under `servers/` and `<N>` is
+your version number. Replace both with your own values everywhere.
+
+Rules enforced by the [publish-dev pipeline](.github/workflows/publish-dev.yml):
+
+- Branch name: `dev-lvx-<mcp name>-v<N>`, where `<N>` is any whole number,
+  ideally the next one in sequence (`v1`, then `v2`, then `v3`, and so on, with
+  no upper limit). It becomes the image tag: the branch
+  `dev-lvx-<mcp name>-v<N>` publishes `lvx-<mcp name>:v<N>`.
+  Example: the branch `dev-lvx-grafana-v2` publishes `lvx-grafana:v2`.
+  Names that don't follow this (for example `v1.3` or no version) fail the
+  pipeline.
+- Contributor Workflow branches have no naming rule; just avoid the `dev-lvx-`
+  prefix, which is reserved for this path.
+- Only existing MCPs: `servers/<mcp name>/` must already be on `main` and
+  `ghcr.io/johalduran7/ai-mcp-docker/lvx-<mcp name>:latest` must already exist.
+  A dev branch can never create a new package; new MCPs use Path A.
+- Publishing is triggered by file changes, not by a keyword: a push that
+  changes `servers/**`, `Dockerfile` or `docker-compose.yml` (READMEs and other
+  `.md` files excluded) starts the pipeline, and a push that only changes other
+  files (docs, `config_templates/`, `.github/`, ...) does not.
+- Only the server named in the branch is built and published, and only when
+  `servers/<mcp name>/` itself has non-doc changes versus `main`. If that folder
+  is untouched (for example only `servers/jira/` changed on a
+  `dev-lvx-<mcp name>-v<N>` branch for a different server), the run ends with a
+  notice and nothing is built or published. Changes to other servers are ignored
+  by this pipeline.
+- Publishing never touches `:latest`, `versions/mcp-version.json`, or the
+  publish notifications.
+
+Steps:
+
+1. Clone the repo and create your branch from `main`, using the naming pattern
+   above.
+   ```bash
+   git clone https://github.com/johalduran7/ai-mcp-docker.git
+   cd ai-mcp-docker
+   git checkout -b dev-lvx-<mcp name>-v<N> main
+   ```
+   Example only: for the `grafana` server, version 2, the command is
+   `git checkout -b dev-lvx-grafana-v2 main`. Do not copy it unless that is
+   really your MCP and version.
+2. Paste the [Copilot prompt for Path B](#prompt-for-copilot-path-b) (or edit
+   `servers/<mcp name>/` by hand) and build locally.
+   ```bash
+   docker compose build lvx-<mcp name>
+   ```
+3. Commit and push. Every push that changes the files above publishes
+   `:v<N>` again.
+   ```bash
+   git add .
+   git commit -m "<describe your change>"
+   git push --set-upstream origin dev-lvx-<mcp name>-v<N>
+   ```
+4. The pipeline validates the named server only (repo checks, hadolint, build,
+   MCP handshake, unit tests) and then pushes the `:v<N>` tag. Share the pull
+   command with your testers:
+   ```bash
+   docker pull ghcr.io/johalduran7/ai-mcp-docker/lvx-<mcp name>:v<N>
+   ```
+   Pushing again overwrites `:v<N>`. The container reports
+   itself as a developer build, so `check_for_updates` does not track it.
+
+   > **Pull the versioned tag, not `latest`.** `docker pull ...:latest` still
+   > gives you the released build without your changes. Testers must pull
+   > `...lvx-<mcp name>:v<N>` and change the
+   > `image` / Docker args in their AI host config from `:latest` to `:v<N>`,
+   > then restart the AI host. Switch back to `:latest` when done testing.
+   >
+   > The AI host starts whatever tag its config names, so pulling `:v<N>` alone
+   > changes nothing. Edit the image argument in your own config
+   > (`claude_desktop_config.json`, `.vscode/mcp.json`, or the `claude mcp add-json`
+   > command):
+   >
+   > ```diff
+   > -  "ghcr.io/johalduran7/ai-mcp-docker/lvx-<mcp name>:latest"
+   > +  "ghcr.io/johalduran7/ai-mcp-docker/lvx-<mcp name>:v<N>"
+   > ```
+5. When the team has tested it, open a PR into `main`. The existing `validate`
+   pipeline gates the PR and, after merge, `publish` releases it to `:latest`
+   (Contributor Workflow, steps 8–10).
+6. **After the merge, delete your `:v<N>` package version.** The merged branch
+   is deleted, so `:v<N>` can never be refreshed again and would keep serving
+   an outdated build next to the new `:latest`. This cleanup is manual:
+   1. Confirm the `publish` run for your merge finished and `:latest` is updated.
+   2. In GitHub, open your `johalduran7` profile, **Packages**, then
+      `ai-mcp-docker/lvx-<mcp name>`.
+   3. Open **Versions**, find the version tagged `v<N>` and use
+      **Delete version**. Do not delete the version tagged `latest`.
+   4. Tell your testers to switch their AI host config back to `:latest`.
+7. A dev branch only changes the existing MCP: do not add or rename servers,
+   and keep changes to shared files (`Dockerfile`, `resources/`) minimal
+   because they are reviewed in the PR for every MCP.
+
+### Prompt for Copilot (Path B)
+
+Fill in **only the header variables**, then paste the complete prompt into Copilot.
+
+```text
+# ── USER FILLS THESE VARIABLES ───────────────────────────────────────────────
+# MCP_NAME: <MCP_NAME>  (an existing folder under servers/)
+# VERSION: <N>  (whole number starting at 1, next in sequence; the branch must be dev-lvx-<MCP_NAME>-v<VERSION>)
+# Change requested: <what the new version should add or fix>
+# OperatingSystem: <linux|Windows|Macos>  (the OS you'll build/test this on)
+# ── DO NOT EDIT BELOW THIS LINE ───────────────────────────────────────────────
+
+Verify the current git branch is exactly `dev-lvx-<MCP_NAME>-v<VERSION>` and that
+`ai-mcp-docker/servers/<MCP_NAME>/` already exists. If either is false,
+stop and tell me instead of continuing.
+
+Implement the "Change requested" above inside
+`ai-mcp-docker/servers/<MCP_NAME>/` only. Follow the conventions already used by that
+server and by `servers/aws/server.py` for auth. Keep the stdio entrypoint,
+`_install_version_notifier(mcp, "lvx-<MCP_NAME>")`, and the existing README tool
+table accurate: update that server's README for any tool you add, rename, or remove.
+
+Do not add, rename, or delete servers. Do not change other servers. Do not edit
+`Dockerfile`, `docker-compose.yml`, `resources/`, `config_templates/`, or
+`.github/` unless the requested change cannot work without it; if it can't,
+list exactly what you changed and why. Do not run Docker builds or smoke
+tests; I run `docker compose build lvx-<MCP_NAME>` myself.
+
+Finish by showing the files changed and these next steps: commit and push the
+branch, then share
+`docker pull ghcr.io/johalduran7/ai-mcp-docker/lvx-<MCP_NAME>:v<VERSION>`.
 ```
 
 ## Pull Request Checklist
